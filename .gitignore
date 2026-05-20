@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# 大文件：模型权重（318 MB Pythia-70M）和数据缓存
+# pg19_official 是原始数据集 dump（92 MB），pg19_one_sample.json 是从中提取的单本书（保留入仓）
+models/
+data/hf_cache/
+data/pg19_official/
+
+# 模板与原始作业文件（非提交物）
+NeurIPS模板/
+大作业.pptx
+
+# 编辑器/系统
+.vscode/
+.idea/
+.DS_Store
+
+# 临时文件
+*.log
+*.tmp
