@@ -92,13 +92,13 @@ WikiText-2 趋势完全一致（PPL 基线 51.8，相同排序）。
 不是因为压缩没用，是因为 6 层 8 头的小模型上 attention 计算在 prefix=1024 时只占
 TPOT 的一小部分，剩下被 layernorm + MLP + kernel launch + Python overhead 占据。
 **KV 压缩的真实价值在长上下文**：cache 越大，每步 decode 要读的 K/V 越多，
-attention 变 memory-bound，压缩才能省真金白银的 GPU 时间。
+attention 变 memory-bound，压缩才能 GPU 时间。
 
 **做法。** [code/latency_scan.py](code/latency_scan.py) 跳过 prefill，直接合成
 不同长度的 `DynamicCache`（K/V 用随机数 ×0.1 填充），跑 decode 测 TPOT。
 诚实声明：cache 内容随机 + 位置编码超出 Pythia 训练长度 → **模型输出毫无意义**；
 但 GEMM、读 K/V 的 memory bandwidth 完全真实——TPOT 就是"如果 cache 这么大，
-GPU 上 decode 一个 token 真的要多久"。
+GPU 上 decode 一个 token 要多久"。
 
 | cache length | TPOT (ms) | KV size (MB, fp32) |
 | ---: | ---: | ---: |
@@ -125,7 +125,7 @@ GPU 上 decode 一个 token 真的要多久"。
 模型 decode 时每步都要扫完整 KV cache，**这种规模下压缩对 decode 延迟有显著加速**。
 在 prefix=1024 的标准 benchmark 上看不到加速，不等于压缩在生产场景下没用。
 
-## 实现细节里的坑
+## 实现细节
 
 ### 1. 压缩后位置 ID 与 4D 注意力 mask
 
@@ -184,9 +184,3 @@ SnapKV / PyramidKV 系列读数 2.8ms，**明显偏向于 attention-heavy 的方
 修完之后 TPOT 全部落在 2.71-2.79ms（差异 ≤0.08ms），符合"小模型上 KV 压缩对 decode
 速度无明显影响"的物理预期。
 
-## 局限与诚实声明
-
-- 单本 PG-19 样本 + WikiText-2 test split 的拼接，没有覆盖更大规模的 PPL 评测
-- PPL 的 RoPE 处理是常规近似：旧 K 保留 prefill 时的原 RoPE 位置，新 Q 用物理位置编码，
-  二者并不严格对齐（kvpress 等开源实现也是这种近似）
-- Pythia-70M 太小，延迟优势在这个规模上看不出来，结论主要体现在显存/PPL 维度
